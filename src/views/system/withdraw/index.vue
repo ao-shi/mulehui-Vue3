@@ -49,8 +49,24 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-select v-model="queryParams.status" placeholder="请选择状态:1=待审核,2=已审核,3=已驳回" clearable>
+      <el-form-item label="添加时间" prop="createTime">
+        <el-date-picker clearable
+          v-model="queryParams.createTime"
+          type="date"
+          value-format="YYYY-MM-DD"
+          placeholder="请选择添加时间">
+        </el-date-picker>
+      </el-form-item>
+      <el-form-item label="修改时间" prop="updateTime">
+        <el-date-picker clearable
+          v-model="queryParams.updateTime"
+          type="date"
+          value-format="YYYY-MM-DD"
+          placeholder="请选择修改时间">
+        </el-date-picker>
+      </el-form-item>
+      <el-form-item label="状态" prop="status" style="width: 200px;">
+        <el-select v-model="queryParams.status" placeholder="请选择" clearable>
           <el-option
             v-for="dict in audit_status"
             :key="dict.value"
@@ -68,41 +84,12 @@
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
         <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['system:withdraw:add']"
-        >新增</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['system:withdraw:edit']"
-        >修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['system:withdraw:remove']"
-        >删除</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <!-- <el-button
           type="warning"
           plain
           icon="Download"
           @click="handleExport"
           v-hasPermi="['system:withdraw:export']"
-        >导出</el-button> -->
+        >导出</el-button>
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
@@ -110,23 +97,38 @@
     <el-table v-loading="loading" :data="withdrawList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="ID" align="center" prop="id" />
-      <el-table-column label="姓名" align="center" prop="name" />
       <el-table-column label="用户" align="center" prop="userId" />
-      <el-table-column label="手机号" align="center" prop="tel" />
       <el-table-column label="提现金额" align="center" prop="amount" />
       <el-table-column label="开户银行" align="center" prop="bank" />
       <el-table-column label="银行卡号" align="center" prop="bankId" />
-      <el-table-column label="添加时间" align="center" prop="createtime" />
-      <el-table-column label="修改时间" align="center" prop="updatetime" />
-      <!-- <el-table-column label="状态:1=待审核,2=已审核,3=已驳回" align="center" prop="status">
+      <el-table-column label="姓名" align="center" prop="name" />
+      <el-table-column label="手机号" align="center" prop="tel" />
+      <el-table-column label="添加时间" align="center" prop="createTime" width="180">
         <template #default="scope">
-          <dict-tag :options="audit_status" :value="scope.row.status"/>
+          <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
         </template>
-      </el-table-column> -->
+      </el-table-column>
+      <el-table-column label="修改时间" align="center" prop="updateTime" width="180">
+        <template #default="scope">
+          <span>{{ parseTime(scope.row.updateTime, '{y}-{m}-{d}') }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" align="center" prop="status">
+        <template #default="scope">
+          <el-tag v-show="scope.row.status == 1" type="info">待审核</el-tag>
+          <el-tag v-show="scope.row.status == 2" type="success">审核通过</el-tag>
+          <el-tag v-show="scope.row.status == 3" type="danger">已驳回</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['system:withdraw:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['system:withdraw:remove']">删除</el-button>
+          <template v-if="scope.row.status == 1">
+            <el-button link type="success" size="small" class="custom-small-button" @click="handleUpdate(scope.row,1)">通过</el-button>
+            <el-button link type="danger" size="small" class="custom-small-button" @click="handleUpdate(scope.row,3)">拒绝</el-button>
+          </template>
+          <template v-else>
+            <el-button link type="danger" size="small" class="custom-small-button" @click="handleDelete(scope.row)">删除</el-button>
+          </template>
         </template>
       </el-table-column>
     </el-table>
@@ -138,23 +140,11 @@
       v-model:limit="queryParams.pageSize"
       @pagination="getList"
     />
-
-    <!-- 添加或修改提现对话框 -->
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
-      <el-form ref="withdrawRef" :model="form" :rules="rules" label-width="80px">
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup name="Withdraw">
-import { listWithdraw, getWithdraw, delWithdraw, addWithdraw, updateWithdraw } from "@/api/system/withdraw";
+import { listWithdraw, delWithdraw, addWithdraw, updateWithdraw } from "@/api/system/withdraw";
 
 const { proxy } = getCurrentInstance();
 const { audit_status } = proxy.useDict('audit_status');
@@ -169,6 +159,12 @@ const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
 
+
+const handleClick = (row) => {
+  console.log(row)
+}
+
+
 const data = reactive({
   form: {},
   queryParams: {
@@ -180,6 +176,8 @@ const data = reactive({
     bankId: null,
     name: null,
     tel: null,
+    createTime: null,
+    updateTime: null,
     status: null
   },
   rules: {
@@ -214,8 +212,8 @@ function reset() {
     bankId: null,
     name: null,
     tel: null,
-    createtime: null,
-    updatetime: null,
+    createTime: null,
+    updateTime: null,
     status: null
   };
   proxy.resetForm("withdrawRef");
@@ -248,36 +246,15 @@ function handleAdd() {
 }
 
 /** 修改按钮操作 */
-function handleUpdate(row) {
-  reset();
-  const _id = row.id || ids.value
-  getWithdraw(_id).then(response => {
-    form.value = response.data;
-    open.value = true;
-    title.value = "修改提现";
-  });
+async function handleUpdate({id},status) {
+  console.log(id,status)
+  const res = await updateWithdraw({id, status})
+  if (res.code === 200) {
+    proxy.$modal.msgSuccess("操作成功");
+    getList();
+  }
 }
 
-/** 提交按钮 */
-function submitForm() {
-  proxy.$refs["withdrawRef"].validate(valid => {
-    if (valid) {
-      if (form.value.id != null) {
-        updateWithdraw(form.value).then(response => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
-      } else {
-        addWithdraw(form.value).then(response => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
-      }
-    }
-  });
-}
 
 /** 删除按钮操作 */
 function handleDelete(row) {
@@ -299,3 +276,13 @@ function handleExport() {
 
 getList();
 </script>
+
+<style scoped>
+.custom-small-button {
+  /* 自定义样式 */
+  /* padding: 10px 10px; */
+  padding: 0 15px;
+  border-radius: 4px;
+  font-size: 15px;
+}
+</style>

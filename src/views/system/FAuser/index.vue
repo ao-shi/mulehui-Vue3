@@ -25,8 +25,8 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="性别" prop="gender">
-        <el-select v-model="queryParams.gender" placeholder="请选择性别" clearable>
+      <el-form-item label="性别" prop="gender" style="width: 200px;">
+        <el-select v-model="queryParams.gender" placeholder="请选择" clearable>
           <el-option
             v-for="dict in sys_user_sex"
             :key="dict.value"
@@ -57,19 +57,6 @@
       </el-form-item>
     </el-form>
 
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button
-          type="warning"
-          plain
-          icon="Download"
-          @click="handleExport"
-          v-hasPermi="['system:FAuser:export']"
-        >导出</el-button>
-      </el-col>
-      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
-
     <el-table v-loading="loading" :data="FAuserList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="ID" align="center" prop="id" />
@@ -96,7 +83,6 @@
       <el-table-column label="加入时间" align="center" prop="joinTime" />
       <el-table-column label="状态" align="center" prop="status" />
       <el-table-column label="验证" align="center" prop="verification" />
-      <el-table-column label="${comment}" align="center" prop="isMch" />
       <el-table-column label="商户id" align="center" prop="mchId" />
       <el-table-column label="邀请人id" align="center" prop="inviteId" />
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
@@ -263,13 +249,6 @@ function handleDelete(row) {
     getList();
     proxy.$modal.msgSuccess("删除成功");
   }).catch(() => {});
-}
-
-/** 导出按钮操作 */
-function handleExport() {
-  proxy.download('system/FAuser/export', {
-    ...queryParams.value
-  }, `FAuser_${new Date().getTime()}.xlsx`)
 }
 
 getList();
